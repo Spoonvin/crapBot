@@ -79,8 +79,8 @@ public class ChessAi {
             depth++;
         }
 
-        System.out.print("Final depth: ");
-        System.out.println(depth);
+        System.out.print("Node count: ");
+        System.out.println(nodeCount);
 
         return bestMove;
     }
@@ -92,7 +92,8 @@ public class ChessAi {
         
         this.nodeCount++;
 
-        
+        if(board.isDrawByRepetitionOr50Move()) return 0;
+
         //Transposition lookup
         TransPosEntry entry = transPosTable.get(board.getZobristKey());
         Move bestTTMove = null;
@@ -122,8 +123,6 @@ public class ChessAi {
                     break;
             }
         }
-
-        if(board.isDrawByRepetitionOr50Move()) return 0;
 
         if(depth <= 0 || ply > maxPly){
             return quiescenceSearch(board, alpha, beta, ply+1);

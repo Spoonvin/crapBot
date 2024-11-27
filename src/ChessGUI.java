@@ -85,10 +85,10 @@ public class ChessGUI extends JFrame {
                 if (moveSuccessful) {
                     drawBoard(); // Redraw the board after a successful move
                     
-                     
+                    /* 
                     System.out.print("Old - ");
                     Move oldMove = botOld.getBestMove(board, 3000);
-                    
+                    */
                     //Make bot move
                     System.out.print("New - ");
                     Move newMove = bot.getBestMove(board, 3000);

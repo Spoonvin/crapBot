@@ -27,7 +27,7 @@ public class Board {
     private int pawnPush; //-1 no pawnpush
 
     private int fiftyMoveRuleCount;
-    private RepetitionBuffer repetitionBuffer;
+    private RepetitionQue repetitionQue;
 
     private long zobristKey;
 
@@ -58,11 +58,11 @@ public class Board {
         this.pawnPush = -1;
 
         this.fiftyMoveRuleCount = 0;
-        this.repetitionBuffer = new RepetitionBuffer(70); //Use a deque instead? linked?
+        this.repetitionQue = new RepetitionQue(); //Use a deque instead? linked?
         
 
         this.zobristKey = Zobrist.generateZobristKey(this);
-        this.repetitionBuffer.add(this.zobristKey);
+        this.repetitionQue.add(this.zobristKey);
 
         this.gameStates = new LinkedList<GameState>();
     }
@@ -92,11 +92,11 @@ public class Board {
         this.pawnPush = -1;
 
         this.fiftyMoveRuleCount = 0;
-        this.repetitionBuffer = new RepetitionBuffer(40); //Should be enough
+        this.repetitionQue = new RepetitionQue(); //Should be enough
         
 
         this.zobristKey = Zobrist.generateZobristKey(this);
-        this.repetitionBuffer.add(this.zobristKey);
+        this.repetitionQue.add(this.zobristKey);
 
         this.gameStates = new LinkedList<GameState>();
     }
@@ -765,7 +765,7 @@ public class Board {
         
         this.isWhiteToPlay = !this.isWhiteToPlay; //Switch side
         updateZobristWithKey(Zobrist.turnKey); //Update for side to play
-        this.repetitionBuffer.add(this.zobristKey);
+        this.repetitionQue.add(this.zobristKey);
 
     }
 
@@ -784,7 +784,7 @@ public class Board {
 
         this.isWhiteToPlay = !this.isWhiteToPlay;
 
-        this.repetitionBuffer.goBack();
+        this.repetitionQue.undo();
 
         int from = move.from;
         int to = move.to;
@@ -1036,7 +1036,7 @@ public class Board {
     }
 
     public boolean isDrawByRepetitionOr50Move(){
-        return this.fiftyMoveRuleCount >= 100 || this.repetitionBuffer.checkRepetition(this.zobristKey);
+        return this.fiftyMoveRuleCount >= 100 || this.repetitionQue.checkRepetition(this.zobristKey);
     }
 
     public int getValueOnSquare(int square){
@@ -1091,7 +1091,7 @@ public class Board {
         this.pawnPush = -1;
 
         this.fiftyMoveRuleCount = 0;
-        this.repetitionBuffer = new RepetitionBuffer(40); //Use a deque instead? linked?
+        this.repetitionQue = new RepetitionQue();
         
         this.gameStates = new LinkedList<GameState>();
 
