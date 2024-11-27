@@ -70,11 +70,43 @@ public class UCIEngine {
 
     private static void handleGo(String input) {
 
+        String regex;
         int timeLeft = 300000; //Standard 5 min
         int timeInc = 0;
+
+        if(board.getIsWhiteToPlay()){
+            regex = "wtime";
+        }else{
+            regex = "btime";
+        }
+            // Parse the input for time control parameters
+        if (input.contains(regex)) {
+            // Extract time left from input
+            String[] parts = input.split(regex);
+            String timeString = (parts[1].trim()).split(" ")[0];
+            timeLeft = Integer.parseInt(timeString); // Time left in milliseconds
+        }
+
+        if(board.getIsWhiteToPlay()){
+            regex = "winc";
+        }else{
+            regex = "binc";
+        }
+        if (input.contains(regex)) {
+            // Extract increment time from input
+            String[] parts = input.split(regex);
+            String incrementString = (parts[1].trim()).split(" ")[0];
+            timeInc = Integer.parseInt(incrementString); // Time increment in milliseconds
+        }
+
+        System.out.println(timeLeft);System.out.println(timeInc);
+
+
         int thinkTime = Helpers.calculateBotThinkTime(timeLeft, timeInc);
         Move bestMove = bot.getBestMove(board, thinkTime);  // Use your bot to calculate the move
         String sBestMove = Helpers.parseToMoveNotation(bestMove);
+        System.out.print("Engine pos: ");
+        System.out.println(Helpers.boardToFen(board));
         System.out.println("bestmove " + sBestMove);
     }
 }

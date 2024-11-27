@@ -1,6 +1,7 @@
 public class TranspositionTable {
     private TransPosEntry[] entries;
     private int size;
+    private boolean enabled = true; //For testing
 
     public TranspositionTable(int size){
         if ((size & (size - 1)) != 0) {
@@ -14,15 +15,12 @@ public class TranspositionTable {
         
         int idx = (int)(zobKey & (size - 1)); //Instead of modulo operator
         TransPosEntry cE = entries[idx];
-        if(cE != null && cE.depth >= entry.depth){
-            return;
-        }else{
-            entries[idx] = entry;
-        }
+        if(cE != null && cE.zobKey == entry.zobKey && cE.depth >= entry.depth) return;
+        entries[idx] = entry;
     }
 
     public TransPosEntry get(long zobKey){
-        
+        //if(!enabled) return null;
         if(entries != null){
             int idx = (int)(zobKey & (size - 1)); //Instead of modulo operator
             TransPosEntry curEntry = entries[idx];
@@ -41,5 +39,13 @@ public class TranspositionTable {
         for(int i = 0; i < size; i++){
             entries[i] = null;
         }
+    }
+
+    public int nullCount(){
+        int count = 0;
+        for(int i = 0; i < size; i++){
+            if(entries[i] == null) count++;
+        }
+        return count;
     }
 }

@@ -58,7 +58,7 @@ public class Board {
         this.pawnPush = -1;
 
         this.fiftyMoveRuleCount = 0;
-        this.repetitionBuffer = new RepetitionBuffer(40); //Use a deque instead? linked?
+        this.repetitionBuffer = new RepetitionBuffer(70); //Use a deque instead? linked?
         
 
         this.zobristKey = Zobrist.generateZobristKey(this);
@@ -253,6 +253,10 @@ public class Board {
         if(Helpers.isOccupiedMask(getPieceType(PieceType.WKING), posMask)) return PieceType.WKING;
         if(Helpers.isOccupiedMask(getPieceType(PieceType.BKING), posMask)) return PieceType.BKING; 
         return PieceType.NONE;
+    }
+
+    public int getPawnPush(){
+        return this.pawnPush;
     }
 
     //Returns pseudo legal moves. Need to check castling and king safety
@@ -505,7 +509,6 @@ public class Board {
 
     //Check if legal move then makeMove
     public boolean tryMakeMove(Move move){
-        //TODO Check
         makeMove(move);
         long attacks = getAllAttacksByColor(this.isWhiteToPlay); //We have switched sides and want to get other colors attacks
 
@@ -556,9 +559,12 @@ public class Board {
     public void makeNullMove(){
         gameStates.push(new GameState(PieceType.NONE, null, this.pawnPush, this.zobristKey, this.fiftyMoveRuleCount, null));
         this.isWhiteToPlay = !this.isWhiteToPlay;
-        updateZobrist(64, 0); //Update zobrist by side to play
+        updateZobristWithKey(Zobrist.turnKey); //Update zobrist by side to play
 
         this.fiftyMoveRuleCount++;
+        if(this.pawnPush != -1){
+            updateZobrist(this.pawnPush, Zobrist.pawnPush);
+        }
         this.pawnPush = -1;
     }
 
@@ -589,6 +595,11 @@ public class Board {
 
         this.fiftyMoveRuleCount++;
 
+        if(this.pawnPush != -1){ //Pawn push square always change when not -1. Update zobrist to go back to default state (-1).
+            updateZobrist(this.pawnPush, Zobrist.pawnPush);
+        }
+        if(move.mType != MoveType.PAWNPUSH) this.pawnPush = -1;
+
         switch(move.mType){
             case CAP:
                 captureSquare(to);
@@ -602,35 +613,32 @@ public class Board {
                 }
                 this.fiftyMoveRuleCount = 0;
                 break;
-            case LCASTLE:
+            case LCASTLE: //Update castling rights + castle zobrists later
                 long castleMaskL = (1L << (to-2)) | 1L << (to+1);
                 if(this.isWhiteToPlay){
                     this.wRooks ^= castleMaskL;
-                    this.wCanCastleLeft = false;
                     updateZobrist(to-2, Zobrist.wRoZob);
                     updateZobrist(to+1, Zobrist.wRoZob);
                 }else{
                     this.bRooks ^= castleMaskL;
-                    this.bCanCastleLeft = false;
                     updateZobrist(to-2, Zobrist.bRoZob);
                     updateZobrist(to+1, Zobrist.bRoZob);
                 }
                 break;
             case PAWNPUSH:
                 this.pawnPush = to;
+                updateZobrist(this.pawnPush, Zobrist.pawnPush);
                 break;
             case QUIET:
                 break;
-            case RCASTLE:
+            case RCASTLE: //Update castling rights + castle zobrists later
                 long castleMaskR = (1L << (to+1)) | 1L << (to-1);
                 if(this.isWhiteToPlay){
                     this.wRooks ^= castleMaskR;
-                    this.wCanCastleRight = false;
                     updateZobrist(to-1, Zobrist.wRoZob);
                     updateZobrist(to+1, Zobrist.wRoZob);
                 }else{
                     this.bRooks ^= castleMaskR;
-                    this.bCanCastleRight = false;
                     updateZobrist(to-1, Zobrist.bRoZob);
                     updateZobrist(to+1, Zobrist.bRoZob);
                 }
@@ -638,7 +646,7 @@ public class Board {
             default:
                 break;
         }
-        if(move.mType != MoveType.PAWNPUSH) this.pawnPush = -1;
+        
 
         PieceType piece = getPieceOnSquare(from);
         switch (piece){
@@ -651,8 +659,14 @@ public class Board {
                 this.bKing ^= mask;
                 updateZobrist(to, Zobrist.bKiZob);
                 updateZobrist(from, Zobrist.bKiZob);
-                this.bCanCastleLeft = false;
-                this.bCanCastleRight = false;
+                if(this.bCanCastleRight){
+                    this.bCanCastleRight = false;
+                    updateZobristWithKey(Zobrist.bCastleRKey);
+                }
+                if(this.bCanCastleLeft){
+                    this.bCanCastleLeft = false;
+                    updateZobristWithKey(Zobrist.bCastleLKey);
+                }
                 break;
             case BKNIGHT:
                 this.bKnights ^= mask;
@@ -681,8 +695,14 @@ public class Board {
                 this.bRooks ^= mask;
                 updateZobrist(to, Zobrist.bRoZob);
                 updateZobrist(from, Zobrist.bRoZob);
-                if(from == 56) this.bCanCastleLeft = false;
-                if(from == 63) this.bCanCastleRight = false;
+                if(from == 63 && this.bCanCastleRight){
+                    this.bCanCastleRight = false;
+                    updateZobristWithKey(Zobrist.bCastleRKey);
+                } 
+                if(from == 56 && this.bCanCastleLeft){
+                    this.bCanCastleLeft = false;
+                    updateZobristWithKey(Zobrist.bCastleLKey);
+                }
                 break;
             case WBISHOP:
                 this.wBishops ^= mask;
@@ -693,8 +713,14 @@ public class Board {
                 this.wKing ^= mask;
                 updateZobrist(to, Zobrist.wKiZob);
                 updateZobrist(from, Zobrist.wKiZob);
-                this.wCanCastleLeft = false;
-                this.wCanCastleRight = false;
+                if(this.wCanCastleRight){
+                    this.wCanCastleRight = false;
+                    updateZobristWithKey(Zobrist.wCastleRKey);
+                }
+                if(this.wCanCastleLeft){
+                    this.wCanCastleLeft = false;
+                    updateZobristWithKey(Zobrist.wCastleLKey);
+                }
                 break;
             case WKNIGHT:
                 this.wKnights ^= mask;
@@ -723,8 +749,14 @@ public class Board {
                 this.wRooks ^= mask;
                 updateZobrist(to, Zobrist.wRoZob);
                 updateZobrist(from, Zobrist.wRoZob);
-                if(from == 0) this.wCanCastleLeft = false;
-                if(from == 7) this.wCanCastleRight = false;
+                if(from == 7 && this.wCanCastleRight){
+                    this.wCanCastleRight = false;
+                    updateZobristWithKey(Zobrist.wCastleRKey);
+                } 
+                if(from == 0 && this.wCanCastleLeft){
+                    this.wCanCastleLeft = false;
+                    updateZobristWithKey(Zobrist.wCastleLKey);
+                }
                 break;
             default:
                 //No piece to move
@@ -732,7 +764,7 @@ public class Board {
         }
         
         this.isWhiteToPlay = !this.isWhiteToPlay; //Switch side
-        updateZobrist(64, 0); //Update for side to play
+        updateZobristWithKey(Zobrist.turnKey); //Update for side to play
         this.repetitionBuffer.add(this.zobristKey);
 
     }
@@ -742,8 +774,6 @@ public class Board {
         this.pawnPush = gameState.pawnPush;
         Move move = gameState.move;
         PieceType capturedPiece = gameState.capturedPiece;
-
-        this.zobristKey = gameState.zobristKey;
 
         this.wCanCastleRight = gameState.wCanCastleRight;
         this.wCanCastleLeft = gameState.wCanCastleLeft;
@@ -831,49 +861,54 @@ public class Board {
         }
 
         //Captures
-        if(move.mType != MoveType.CAP) return;
-        long toMask = 1L << to;
-        switch(capturedPiece){
-            case BBISHOP:
-                this.bBishops |= toMask;
-                break;
-            case BKING:
-                this.bKing |= toMask;
-                break;
-            case BKNIGHT:
-                this.bKnights |= toMask;
-                break;
-            case BPAWN:
-                this.bPawns |= toMask;
-                break;
-            case BQUEEN:
-                this.bQueens |= toMask;
-                break;
-            case BROOK:
-                this.bRooks |= toMask;
-                break;
-            case WBISHOP:
-                this.wBishops |= toMask;
-                break;
-            case WKING:
-                this.wKing |= toMask;
-                break;
-            case WKNIGHT:
-                this.wKnights |= toMask;
-                break;
-            case WPAWN:
-                this.wPawns |= toMask;
-                break;
-            case WQUEEN:
-                this.wQueens |= toMask;
-                break;
-            case WROOK:
-                this.wRooks |= toMask;
-                break;
-            default:
-                break;
-            
+        if(move.mType == MoveType.CAP){
+            long toMask = 1L << to;
+            switch(capturedPiece){
+                case BBISHOP:
+                    this.bBishops |= toMask;
+                    break;
+                case BKING:
+                    this.bKing |= toMask;
+                    break;
+                case BKNIGHT:
+                    this.bKnights |= toMask;
+                    break;
+                case BPAWN:
+                    this.bPawns |= toMask;
+                    break;
+                case BQUEEN:
+                    this.bQueens |= toMask;
+                    break;
+                case BROOK:
+                    this.bRooks |= toMask;
+                    break;
+                case WBISHOP:
+                    this.wBishops |= toMask;
+                    break;
+                case WKING:
+                    this.wKing |= toMask;
+                    break;
+                case WKNIGHT:
+                    this.wKnights |= toMask;
+                    break;
+                case WPAWN:
+                    this.wPawns |= toMask;
+                    break;
+                case WQUEEN:
+                    this.wQueens |= toMask;
+                    break;
+                case WROOK:
+                    this.wRooks |= toMask;
+                    break;
+                default:
+                    break;
+                
+            }
         }
+        
+
+        //Zobrist is saved in gamestate to make unmakemove logic more simple. But some functions in unmakemove modify zobrist, so update zobrist last?
+        this.zobristKey = gameState.zobristKey; 
     }
 
     //Remove piece from given square and updates zobrist key
@@ -904,10 +939,12 @@ public class Board {
             case BROOK:
                 this.bRooks &= ~mask;
                 updateZobrist(pos, Zobrist.bRoZob);
-                if(pos == 56){  //Prevents castling after your rook got captured :)
-                    this.bCanCastleLeft = false;
-                }else if(pos == 63){
+                if(pos == 63 && this.bCanCastleRight){  //Prevents castling after your rook got captured :)
                     this.bCanCastleRight = false;
+                    updateZobristWithKey(Zobrist.bCastleRKey);
+                }else if(pos == 56 && this.bCanCastleLeft){
+                    this.bCanCastleLeft = false;
+                    updateZobristWithKey(Zobrist.bCastleLKey);
                 }
                 break;
             case WBISHOP:
@@ -933,10 +970,12 @@ public class Board {
             case WROOK:
                 this.wRooks &= ~mask;
                 updateZobrist(pos, Zobrist.wRoZob);
-                if(pos == 0){  //Prevents castling after your rook got captured :)
-                    this.wCanCastleLeft = false;
-                }else if(pos == 7){
+                if(pos == 7 && this.wCanCastleRight){  //Prevents castling after your rook got captured :)
                     this.wCanCastleRight = false;
+                    updateZobristWithKey(Zobrist.wCastleRKey);
+                }else if(pos == 0 && this.wCanCastleLeft){
+                    this.wCanCastleLeft = false;
+                    updateZobristWithKey(Zobrist.wCastleLKey);
                 }
                 break;
             default:
@@ -991,6 +1030,9 @@ public class Board {
 
     private void updateZobrist(int square, int piece){
         this.zobristKey ^= Zobrist.getzobristKeyMap()[square][piece];
+    }
+    private void updateZobristWithKey(long key){
+        this.zobristKey ^= key;
     }
 
     public boolean isDrawByRepetitionOr50Move(){

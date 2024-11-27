@@ -7,10 +7,13 @@ public class TransPosEntry {
 
     long zobKey;
 
-    public TransPosEntry(long zobKey, int depth, int score, int type){
+    Move bestMove;
+
+    public TransPosEntry(long zobKey, int depth, int score, Move bestMove, int type){
         this.zobKey = zobKey;
         this.depth = depth;
         this.score = score;
+        this.bestMove = bestMove;
         this.type = type;
     }
 }

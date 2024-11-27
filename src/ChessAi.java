@@ -41,7 +41,7 @@ public class ChessAi {
         this.exitSearch = false;
         this.foundFallbackMove = false;
 
-        this.transPosTable.clear();
+        //this.transPosTable.clear();
 
         this.nodeCount = 0;
 
@@ -75,23 +75,28 @@ public class ChessAi {
             }
             bestMove = currentBestMove;
             Helpers.moveToHead(moves, bestMove); //In order to search best move first
-            transPosTable.put(board.getZobristKey(), new TransPosEntry(board.getZobristKey(), depth, alpha, Constants.exact));
+            transPosTable.put(board.getZobristKey(), new TransPosEntry(board.getZobristKey(), depth, alpha, bestMove, Constants.exact));
             depth++;
         }
 
-        //System.out.println(nodeCount);
+        System.out.print("Final depth: ");
+        System.out.println(depth);
 
         return bestMove;
     }
 
+    //TODO: Check extensions
     public int alphaBeta(Board board, int alpha, int beta, int ply, int depth){ 
         exitSearch = isTimeToExit(nodeCount);
         if(exitSearch) return 0;
         
+        this.nodeCount++;
 
+        
         //Transposition lookup
         TransPosEntry entry = transPosTable.get(board.getZobristKey());
-        ttLookups++;
+        Move bestTTMove = null;
+        if(entry != null) bestTTMove = entry.bestMove;
         if(entry != null && entry.depth >= depth){
             ttHits++;
             int score = entry.score;
@@ -117,7 +122,6 @@ public class ChessAi {
                     break;
             }
         }
-        this.nodeCount++;
 
         if(board.isDrawByRepetitionOr50Move()) return 0;
 
@@ -125,10 +129,12 @@ public class ChessAi {
             return quiescenceSearch(board, alpha, beta, ply+1);
         }
 
+        boolean isInCheck = board.isCheckForColor(board.getIsWhiteToPlay());
+
         //Null move pruning
         int staticEval = eval(board);
-        if(!board.isCheckForColor(board.getIsWhiteToPlay()) && (depth > nullMoveReduction) && 
-            (staticEval > beta) && (Helpers.endGameRatio(board) < 0.7)){ 
+        if(!isInCheck && (depth > nullMoveReduction) && 
+            (staticEval > beta) && (Helpers.endGameRatio(board) < 0.8)){ 
 
             board.makeNullMove();
             int nullScore = -alphaBeta(board, -beta, -alpha, ply+1, depth-1-nullMoveReduction);
@@ -143,9 +149,14 @@ public class ChessAi {
 
         ArrayList<Move> moves = board.getPseudoLegalMoves();
         Helpers.orderMovesWithKiller(moves, killerMoves[ply]);
+        if(bestTTMove != null) Helpers.moveToHead(moves, bestTTMove);
 
         int alphaOrg = alpha;
+        int bestScore = Constants.lowestEval;
+        Move bestMove = null;
 
+        if(isInCheck && depth <= 2) depth++; //Check extensions
+ 
         for(Move move : moves){
             if(!board.tryMakeMove(move)) continue;
 
@@ -164,9 +175,13 @@ public class ChessAi {
 
             if(curScore >= beta){ //Beta cut-off
                 if(move.mType == MoveType.QUIET) killerMoves[ply] = move; //Beta cutoff gives us a killer move (if quiet)
-                transPosTable.put(board.getZobristKey(), new TransPosEntry(board.getZobristKey(), depth, beta, Constants.lowerBound));
+                if(!exitSearch) transPosTable.put(board.getZobristKey(), new TransPosEntry(board.getZobristKey(), depth, beta, move, Constants.lowerBound));
                 return beta;
             } 
+            if(curScore > bestScore){
+                bestScore = curScore;
+                bestMove = move;
+            }
             if(curScore > alpha) alpha = curScore;
         }
         if(!foundAtLeastOneMove){
@@ -184,7 +199,7 @@ public class ChessAi {
         }else{
             transPosType = Constants.upperBound;
         }
-        transPosTable.put(board.getZobristKey(), new TransPosEntry(board.getZobristKey(), depth, alpha, transPosType));
+        if(!exitSearch) transPosTable.put(board.getZobristKey(), new TransPosEntry(board.getZobristKey(), depth, alpha, bestMove, transPosType));
         
         return alpha;
     }
@@ -270,9 +285,12 @@ public class ChessAi {
         exitSearch = isTimeToExit(nodeCount);
         if(exitSearch) return 0;
 
+        this.nodeCount++;
+        
         //Transposition lookup
         TransPosEntry entry = transPosTable.get(board.getZobristKey());
-        ttLookups++;
+        Move bestTTMove = null;
+        if(entry != null) bestTTMove = entry.bestMove;
         if(entry != null){
             ttHits++;
             int score = entry.score;
@@ -299,8 +317,6 @@ public class ChessAi {
             }
         }
 
-        this.nodeCount++;
-
         int standPat = eval(board);  //static eval
 
         if (standPat >= beta){
@@ -311,20 +327,39 @@ public class ChessAi {
         }
 
         boolean foundAtLeastOneMove = false;
+        int alphaOrg = alpha;
+        int bestScore = Constants.lowestEval;
+        Move bestMove = null;
 
-        for(Move move : board.getNonQuietMoves()){
+        ArrayList<Move> moves = board.getNonQuietMoves();
+        if(bestTTMove != null) Helpers.moveToHead(moves, bestTTMove);
+
+        for(Move move : moves){
             if(!board.tryMakeMove(move)) continue;
             foundAtLeastOneMove = true;
             int eval = -quiescenceSearch(board, -beta, -alpha, ply+1);
             board.unmakeMove();
             if(eval >= beta){
+                if(!exitSearch) transPosTable.put(board.getZobristKey(), new TransPosEntry(board.getZobristKey(), 0, beta, move, Constants.lowerBound));
                 return beta;
+            }
+            if(eval > bestScore){
+                bestScore = eval;
+                bestMove = move;
             }
             if(eval > alpha){
                 alpha = eval;
             }
         }
-        if(!foundAtLeastOneMove) return standPat; //TODO: Check if in check
+        if(!foundAtLeastOneMove) return standPat;
+
+        int transPosType;
+        if(alpha != alphaOrg){
+            transPosType = Constants.exact;
+        }else{
+            transPosType = Constants.upperBound;
+        }
+        if(!exitSearch) transPosTable.put(board.getZobristKey(), new TransPosEntry(board.getZobristKey(), 0, alpha, bestMove, transPosType));
         return alpha;
     }
 
@@ -335,7 +370,7 @@ public class ChessAi {
         this.ttLookups = 0;
         this.foundFallbackMove = false; //Make search not depend on time
 
-        this.transPosTable.clear();
+        //this.transPosTable.clear();
 
         ArrayList<Move> moves = board.getPseudoLegalMoves();
         Helpers.orderMoves(moves);
@@ -354,10 +389,16 @@ public class ChessAi {
                 bestMove = move;
             }
         }
-        System.out.print("Node count: ");
+        //System.out.print("Node count: ");
+        
         System.out.println(this.nodeCount);
+        /* 
+        System.out.println("TT lookups and hits: ");
         System.out.println(ttLookups);
         System.out.println(ttHits);
+        System.out.print("Null count: ");
+        System.out.println(transPosTable.nullCount());
+        */
         return bestMove;
     }
     

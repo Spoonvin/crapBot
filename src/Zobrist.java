@@ -16,6 +16,14 @@ public class Zobrist {
     public static final int bQuZob = 9;
     public static final int wKiZob = 10;
     public static final int bKiZob = 11;
+    public static final int pawnPush = 12;
+
+    public static long turnKey;
+    public static long wCastleRKey;
+    public static long wCastleLKey;
+    public static long bCastleRKey;
+    public static long bCastleLKey;
+
 
     public Zobrist(){
         initializeZobristKeyMap();
@@ -28,14 +36,19 @@ public class Zobrist {
     //Add keys for castling rights??
     public static void initializeZobristKeyMap(){
         Random random = new Random();
-        zobristKeyMap = new long[65][12];
+        zobristKeyMap = new long[64][13];
 
         for (int square = 0; square < 64; square++) {
-            for (int pieceType = 0; pieceType < 12; pieceType++) {
+            for (int pieceType = 0; pieceType < 13; pieceType++) {
                 zobristKeyMap[square][pieceType] = random.nextLong();
             }
         }
-        zobristKeyMap[64][0] = random.nextLong(); //If its whites turn
+        turnKey = random.nextLong(); //If white use key
+        wCastleRKey = random.nextLong(); //If true use keys
+        wCastleLKey = random.nextLong();
+        bCastleRKey = random.nextLong();
+        bCastleLKey = random.nextLong();
+
     }
 
     public static long generateZobristKey(Board b){
@@ -85,7 +98,17 @@ public class Zobrist {
             
         }
 
-        if(b.getIsWhiteToPlay()) key ^= zobristKeyMap[64][0];
+        if(b.getPawnPush() != -1){
+            key ^= zobristKeyMap[b.getPawnPush()][pawnPush];
+        }
+
+        boolean[] cR = b.getCastlingRights();
+        if(cR[0]) key ^= wCastleRKey;
+        if(cR[1]) key ^= wCastleLKey;
+        if(cR[2]) key ^= bCastleRKey;
+        if(cR[3]) key ^= bCastleLKey;
+
+        if(b.getIsWhiteToPlay()) key ^= turnKey;
         return key;
     }
 }

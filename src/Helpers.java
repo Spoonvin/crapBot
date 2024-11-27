@@ -777,7 +777,7 @@ public class Helpers {
         }else if(movingPiece == PieceType.WKING || movingPiece == PieceType.BKING){
             if((moveDiff) == 2){
                 moveType = MoveType.RCASTLE;
-            }else if((moveDiff) == -3){
+            }else if((moveDiff) == -2){
                 moveType = MoveType.LCASTLE;
             }else{
                 moveType = MoveType.QUIET;
@@ -814,14 +814,16 @@ public class Helpers {
     }
 
     public static int calculateBotThinkTime(int time, int timeInc){
-        if(time > 600000){
-            return 10000 + timeInc;
-        }else if(time > 300000){
-            return 6000 + timeInc;
-        }else if(time > 60000){
-            return 3000 + timeInc;
+        if(time < 60000){
+            return 800 + timeInc;
+        }else if(time < 120000){
+            return 1500 + timeInc;
+        }else if(time < 300000){ //5 min
+            return 4000 + timeInc;
+        }else if(time < 600000){ //10 min
+            return 11000 + timeInc;
         }else{
-            return 2000 + timeInc;
+            return 15000 + timeInc;
         }
     }
 }
