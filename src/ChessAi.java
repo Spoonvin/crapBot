@@ -11,8 +11,6 @@ public class ChessAi {
     private boolean foundFallbackMove; //Variable to see if we have at least one move to return, otherwise continue search even if time is out.
 
     private int nodeCount;
-    private int ttLookups;
-    private int ttHits;
 
     private OpeningBook openingBook;
 
@@ -29,6 +27,10 @@ public class ChessAi {
         this.transPosTable = new TranspositionTable((int)Math.pow(2,23));
     }
 
+    public void clearTT(){
+        this.transPosTable.clear();
+    }
+
     public Move getBestMove(Board board, int timeLimit){
 
         Move bookMove = openingBook.lookupPosition(board);
@@ -40,8 +42,6 @@ public class ChessAi {
         this.timeLim = timeLimit; //Timelim in millis
         this.exitSearch = false;
         this.foundFallbackMove = false;
-
-        //this.transPosTable.clear();
 
         this.nodeCount = 0;
 
@@ -79,8 +79,7 @@ public class ChessAi {
             depth++;
         }
 
-        System.out.print("Node count: ");
-        System.out.println(nodeCount);
+        System.out.println(depth);
 
         return bestMove;
     }
@@ -99,7 +98,6 @@ public class ChessAi {
         Move bestTTMove = null;
         if(entry != null) bestTTMove = entry.bestMove;
         if(entry != null && entry.depth >= depth){
-            ttHits++;
             int score = entry.score;
             if(score == -Constants.checkmateScore){
                 score += ply;
@@ -131,9 +129,9 @@ public class ChessAi {
         boolean isInCheck = board.isCheckForColor(board.getIsWhiteToPlay());
 
         //Null move pruning
-        int staticEval = eval(board);
+        int staticMaterialEval = materialEval(board); //Only fast less accurate eval needed? 
         if(!isInCheck && (depth > nullMoveReduction) && 
-            (staticEval > beta) && (Helpers.endGameRatio(board) < 0.8)){ 
+            (staticMaterialEval > beta) && (Helpers.endGameRatio(board) < 0.8)){ 
 
             board.makeNullMove();
             int nullScore = -alphaBeta(board, -beta, -alpha, ply+1, depth-1-nullMoveReduction);
@@ -184,7 +182,7 @@ public class ChessAi {
             if(curScore > alpha) alpha = curScore;
         }
         if(!foundAtLeastOneMove){
-            if(board.isCheckForColor(board.getIsWhiteToPlay())){
+            if(isInCheck){
                 return -Constants.checkmateScore;
             }else{
                 return 0;
@@ -263,13 +261,16 @@ public class ChessAi {
         long bPawns = board.getPieceType(PieceType.BPAWN);
         long bKing = board.getPieceType(PieceType.BKING);
 
-        wPoints += Helpers.passedPawnsBonus(wPawns, bPawns, true);
+        wPoints += Helpers.passedPawnsBonus(wPawns, bPawns, true, endGameRatio);
         wPoints -= Helpers.stackedpawnsPenalty(wPawns);
-        wPoints += (1-endGameRatio)*Helpers.pawnShieldModifier(wKing, wPawns, true);
+        double wShieldNOpenFileMod = (1-endGameRatio)*(Helpers.pawnShieldBonus(wKing, wPawns, true) - Helpers.openFilePenalty(wKing, wPawns));
+        wPoints += wShieldNOpenFileMod;
 
-        bPoints += Helpers.passedPawnsBonus(bPawns, wPawns, false);
+        bPoints += Helpers.passedPawnsBonus(bPawns, wPawns, false, endGameRatio);
         bPoints -= Helpers.stackedpawnsPenalty(bPawns);
-        bPoints += (1-endGameRatio)*Helpers.pawnShieldModifier(bKing, bPawns, false);
+        double bShieldNOpenFileMod = (1-endGameRatio)*(Helpers.pawnShieldBonus(bKing, bPawns, false) - Helpers.openFilePenalty(bKing, bPawns));
+        bPoints += bShieldNOpenFileMod;
+
         
         int relativeScore = wPoints - bPoints;
         if(board.getIsWhiteToPlay()){
@@ -291,7 +292,6 @@ public class ChessAi {
         Move bestTTMove = null;
         if(entry != null) bestTTMove = entry.bestMove;
         if(entry != null){
-            ttHits++;
             int score = entry.score;
             if(score == -Constants.checkmateScore){
                 score += ply;
@@ -365,8 +365,6 @@ public class ChessAi {
     
     public Move getBestMoveDepth(Board board, int depth){
         this.nodeCount = 0;
-        this.ttHits = 0;
-        this.ttLookups = 0;
         this.foundFallbackMove = false; //Make search not depend on time
 
         //this.transPosTable.clear();
@@ -399,6 +397,63 @@ public class ChessAi {
         System.out.println(transPosTable.nullCount());
         */
         return bestMove;
+    }
+
+    //Evaluates only material difference for a faster eval function
+    private int materialEval(Board board){
+        int wPoints = 0;
+        int bPoints = 0;
+        
+        //Piece points
+        for(int i = 0; i < 64; i++){
+            PieceType piece = board.getPieceOnSquare(i);
+            switch(piece){
+                case BBISHOP:
+                    bPoints += Constants.bishopVal;
+                    break;
+                case BKING:
+                    bPoints += Constants.kingVal;
+                    break;
+                case BKNIGHT:
+                    bPoints += Constants.knightVal;
+                    break;
+                case BPAWN:
+                    bPoints += Constants.pawnVal;
+                    break;
+                case BQUEEN:
+                    bPoints += Constants.queenVal;
+                    break;
+                case BROOK:
+                    bPoints += Constants.rookVal;
+                    break;
+                case WBISHOP:
+                    wPoints += Constants.bishopVal;
+                    break;
+                case WKING:
+                    wPoints += Constants.kingVal;
+                    break;
+                case WKNIGHT:
+                    wPoints += Constants.knightVal;
+                    break;
+                case WPAWN:
+                    wPoints += Constants.pawnVal;
+                    break;
+                case WQUEEN:
+                    wPoints += Constants.queenVal;
+                    break;
+                case WROOK:
+                    wPoints += Constants.rookVal;
+                    break;
+                default:
+                    break;
+            }
+        }
+        int relativeScore = wPoints - bPoints;
+        if(board.getIsWhiteToPlay()){
+            return relativeScore;
+        }else{
+            return -relativeScore;
+        }
     }
     
 

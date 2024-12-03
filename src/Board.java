@@ -100,9 +100,41 @@ public class Board {
 
         this.gameStates = new LinkedList<GameState>();
     }
+    //TODO: deep copy
+    public Board(Board orgBoard){
+        this.wPawns = orgBoard.getPieceType(PieceType.WPAWN);
+        this.bPawns = orgBoard.getPieceType(PieceType.BPAWN);
+        this.wKnights = orgBoard.getPieceType(PieceType.WKNIGHT);
+        this.bKnights = orgBoard.getPieceType(PieceType.BKNIGHT);
+        this.wBishops = orgBoard.getPieceType(PieceType.WBISHOP);
+        this.bBishops = orgBoard.getPieceType(PieceType.BBISHOP);
+        this.wRooks = orgBoard.getPieceType(PieceType.WROOK);
+        this.bRooks = orgBoard.getPieceType(PieceType.BROOK);
+        this.wQueens = orgBoard.getPieceType(PieceType.WQUEEN);
+        this.bQueens = orgBoard.getPieceType(PieceType.BQUEEN);
+        this.wKing = orgBoard.getPieceType(PieceType.WKING);
+        this.bKing = orgBoard.getPieceType(PieceType.BKING);
+
+        boolean[] cR = orgBoard.getCastlingRights();
+        this.wCanCastleRight = cR[0];
+        this.wCanCastleLeft = cR[1];
+        this.bCanCastleRight = cR[2];
+        this.bCanCastleLeft = cR[3];
+
+        this.isWhiteToPlay = orgBoard.getIsWhiteToPlay();
+        this.fiftyMoveRuleCount = orgBoard.getFiftyMoveRuleCOunt();
+        this.pawnPush = orgBoard.getPawnPush();
+        this.zobristKey = orgBoard.getZobristKey();
+        this.repetitionQue = new RepetitionQue(orgBoard.getRepetitionQue());
+        this.gameStates = new LinkedList<GameState>();
+    }
 
     public void reGenerateZobrist(){
         this.zobristKey = Zobrist.generateZobristKey(this);
+    }
+
+    public int getFiftyMoveRuleCOunt(){
+        return this.fiftyMoveRuleCount;
     }
 
     public long getZobristKey(){
@@ -111,6 +143,10 @@ public class Board {
 
     public boolean getIsWhiteToPlay(){
         return this.isWhiteToPlay;
+    }
+
+    public RepetitionQue getRepetitionQue(){
+        return repetitionQue;
     }
     
     public long getPieceType(PieceType pT){
@@ -447,7 +483,7 @@ public class Board {
         return moves;
     }
 
-    private long getAllAttacksByColor(boolean white){
+    public long getAllAttacksByColor(boolean white){
         long occupancy = getAllPieces();
         long attacks = 0;
         for(int square = 0; square < 64; square++){
@@ -483,6 +519,58 @@ public class Board {
                 case WKING:
                     if(!white) break;
                     attacks |= Constants.kingMoves[square];
+                    break;
+                case WKNIGHT:
+                    if(!white) break;
+                    attacks |= Constants.knightMoves[square];
+                    break;
+                case WPAWN:
+                    if(!white) break;
+                    attacks |= Constants.wPawnAttacks[square];
+                    break;
+                case WQUEEN:
+                    if(!white) break;
+                    attacks |= Helpers.getQueenMovesMagic(occupancy, square);
+                    break;
+                case WROOK:
+                    if(!white) break;
+                    attacks |= Helpers.getRookMovesMagic(occupancy, square);
+                    break;
+                default:
+                    break;  
+            }
+        }
+        return attacks;
+    }
+
+    public long getAllAttacksByColorNoKing(boolean white){
+        long occupancy = getAllPieces();
+        long attacks = 0;
+        for(int square = 0; square < 64; square++){
+            switch(getPieceOnSquare(square)){
+                case BBISHOP:
+                    if(white) break;
+                    attacks |= Helpers.getBishopMovesMagic(occupancy, square);
+                    break;
+                case BKNIGHT:
+                    if(white) break;
+                    attacks |= Constants.knightMoves[square];
+                    break;
+                case BPAWN:
+                    if(white) break;
+                    attacks |= Constants.bPawnAttacks[square];
+                    break;
+                case BQUEEN:
+                    if(white) break;
+                    attacks |= Helpers.getQueenMovesMagic(occupancy, square);
+                    break;
+                case BROOK:
+                    if(white) break;
+                    attacks |= Helpers.getRookMovesMagic(occupancy, square);
+                    break;
+                case WBISHOP:
+                    if(!white) break;
+                    attacks |= Helpers.getBishopMovesMagic(occupancy, square);
                     break;
                 case WKNIGHT:
                     if(!white) break;

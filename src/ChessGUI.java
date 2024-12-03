@@ -18,11 +18,13 @@ public class ChessGUI extends JFrame {
 
     private ChessAi bot;
     private ChessAiOld botOld;
+    private ConcurrentBot cBot;
 
-    public ChessGUI(Board b, ChessAi bot, ChessAiOld botOld) {
+    public ChessGUI(Board b, ChessAi bot, ChessAiOld botOld, ConcurrentBot cBot) {
         this.board = b;
         this.bot = bot;
         this.botOld = botOld;
+        this.cBot = cBot;
 
         setTitle("Chess Game");
         setSize(8 * TILE_SIZE, 8 * TILE_SIZE);

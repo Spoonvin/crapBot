@@ -662,19 +662,19 @@ public class Helpers {
         int totPoints = totalPointOnBoard(board);
         if(totPoints <= 4200) return 1;
         if(totPoints >= 7880) return 0;
-        return (double)(7880 - totPoints)/4200;
+        return (7880.0 - totPoints) / (7880.0 - 4200.0);
     }
 
-    public static int passedPawnsBonus(long friendPawns, long enemyPawns, boolean isWhite){
+    public static int passedPawnsBonus(long friendPawns, long enemyPawns, boolean isWhite, double endGameRatio){
         int totalBonus = 0;
         for(byte i = 0; i < 64; i++){
             if(isOccupied(friendPawns, i)){
                 if(!isPassedPawn(enemyPawns, i, isWhite)) continue;
                 int rank = i/8;
                 if(isWhite){
-                    totalBonus += Constants.passedPawnRankMod[rank];
+                    totalBonus += Constants.passedPawnRankMod[rank] * endGameRatio;
                 }else{
-                    totalBonus += Constants.passedPawnRankMod[7-rank];
+                    totalBonus += Constants.passedPawnRankMod[7-rank] * endGameRatio;
                 }
             }
         }
@@ -715,7 +715,7 @@ public class Helpers {
     }
     
     //Only use in opening and mid game
-    public static int pawnShieldModifier(long king, long pawns, boolean isWhite){
+    public static int pawnShieldBonus(long king, long pawns, boolean isWhite){
         //Todo: use king move map ored with movemap shifted up. Remember to weigh based on time in game
         int kingCoord = Long.numberOfTrailingZeros(king);
         int kingRank = kingCoord/8;
@@ -745,6 +745,26 @@ public class Helpers {
             return shieldModifiers[shieldModifiers.length-1];
         }
     }
+
+    //Remember to scale with endgame ratio
+    public static int openFilePenalty(long king, long pawns){
+        int kingFile = (Long.numberOfTrailingZeros(king))%8;
+        int numOpenFiles = 0;
+        if((Constants.files[kingFile] & pawns) == 0) numOpenFiles++;
+        if(kingFile != 0 && (Constants.files[kingFile-1] & pawns) == 0) numOpenFiles++;
+        if(kingFile != 7 && (Constants.files[kingFile+1] & pawns) == 0) numOpenFiles++;
+        return numOpenFiles*Constants.openKingFilesPenalty;
+    }
+
+    public static int enemyAttacksAroundKingPenalty(long attacks, long king){
+        long kingProx = (Constants.kingMoves[Long.numberOfTrailingZeros(king)] | king);
+        return Long.bitCount(kingProx & attacks) * Constants.attackNextToKingPenalty;
+    }
+
+    public static int movementBonus(long attacks){
+        return Long.bitCount(attacks)*Constants.movementBonus;
+    }
+
 
     public static boolean isValidCoordinate(int coord){
         return coord >= 0 && coord < 64;

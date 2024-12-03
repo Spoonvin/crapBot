@@ -41,6 +41,7 @@ public class UCIEngine {
 
     private static void handleNewGame() {
         board = new Board();
+        bot.clearTT();
     }
 
     private static void handlePosition(String input) {

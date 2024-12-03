@@ -244,9 +244,12 @@ public class Constants {
 
     public static int maxPly = 12;
 
-    public final static int[] passedPawnRankMod = {0, 15, 20, 50, 70, 90, 120, 0};
-    public final static int stackedPawnPenalty = 40;
+    public final static int[] passedPawnRankMod = {0, 15, 20, 50, 70, 95, 130, 0};
+    public final static int stackedPawnPenalty = 30;
     public final static int[] pawnShieldModifiers = {-70, -20, 40, 50};
+    public final static int openKingFilesPenalty = 35;
+    public final static int attackNextToKingPenalty = 15;
+    public final static int movementBonus = 4; //Multiply num of attacks by this
 
     public final static byte[] modBPaMid =   {
         0,  0,  0,  0,  0,  0,  0,  0,
@@ -263,8 +266,8 @@ public class Constants {
        0,   0,   0,   0,   0,   0,   0,   0,
        120, 120, 100, 100, 100, 100, 120, 120,
        70,  70,  65,  65,  65,  65,  65,  65,
-       20,  20,  15,  15,  15,  15,  20,  20,
-       10,  5,   5,   0,   0,   5,   5,   10,
+       30,  30,  25,  25,  25,  25,  30,  30,
+       15,  10,  10,  10,  10,  10,  10,  15,
        0,   0,   0,   0,   0,   0,   0,   0,
        5,   5,   5,   5,   5,   5,   5,   5,
        0,   0,   0,   0,   0,   0,   0,   0};
