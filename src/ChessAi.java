@@ -19,7 +19,7 @@ public class ChessAi {
     private final int nullMoveReduction = 2; //2 or 3
 
     private final int maxPly = 20;
-    private final Move[] killerMoves = new Move[maxPly+1]; //Store killer moves, modify ordering to place killers adter captures(modify moveValue).
+    private final Move[] killerMoves = new Move[maxPly]; //Store killer moves, modify ordering to place killers adter captures(modify moveValue).
 
     public ChessAi() throws Exception{
         Path relativePath = Paths.get("resources", "Book.txt");
@@ -48,18 +48,18 @@ public class ChessAi {
         ArrayList<Move> moves = board.getPseudoLegalMoves();
         Helpers.orderMoves(moves);
         
-        int depth = 0; //start depth
+        int depth = 1; //start depth
         Move bestMove = null;
-        while(!exitSearch && (System.currentTimeMillis() - startTime) < timeLim){
-            int alpha = Constants.lowestEval +1;
-            int beta = Constants.highestEval -1;
-            int score = Constants.lowestEval +1;
+        while(!exitSearch){
+            int alpha = Constants.lowestEval;
+            int beta = Constants.highestEval;
+            int score = Constants.lowestEval;
 
             Move currentBestMove = null;
 
             for(Move move : moves){
                 if(!board.tryMakeMove(move)) continue;
-                int curScore = -alphaBeta(board, -beta, -alpha, 1, depth);
+                int curScore = -alphaBeta(board, -beta, -alpha, 0, depth);
                 board.unmakeMove();
 
                 if(exitSearch) break;
@@ -84,7 +84,6 @@ public class ChessAi {
         return bestMove;
     }
 
-    //TODO: Check extensions
     public int alphaBeta(Board board, int alpha, int beta, int ply, int depth){ 
         exitSearch = isTimeToExit(nodeCount);
         if(exitSearch) return 0;

@@ -11,8 +11,6 @@ public class ChessAiOld {
     private boolean foundFallbackMove; //Variable to see if we have at least one move to return, otherwise continue search even if time is out.
 
     private int nodeCount;
-    private int ttLookups;
-    private int ttHits;
 
     private OpeningBook openingBook;
 
@@ -21,7 +19,7 @@ public class ChessAiOld {
     private final int nullMoveReduction = 2; //2 or 3
 
     private final int maxPly = 20;
-    private final Move[] killerMoves = new Move[maxPly+1]; //Store killer moves, modify ordering to place killers adter captures(modify moveValue).
+    private final Move[] killerMoves = new Move[maxPly]; //Store killer moves, modify ordering to place killers adter captures(modify moveValue).
 
     public ChessAiOld() throws Exception{
         Path relativePath = Paths.get("resources", "Book.txt");
@@ -45,25 +43,23 @@ public class ChessAiOld {
         this.exitSearch = false;
         this.foundFallbackMove = false;
 
-        //this.transPosTable.clear();
-
         this.nodeCount = 0;
 
         ArrayList<Move> moves = board.getPseudoLegalMoves();
         Helpers.orderMoves(moves);
         
-        int depth = 0; //start depth
+        int depth = 1; //start depth
         Move bestMove = null;
-        while(!exitSearch && (System.currentTimeMillis() - startTime) < timeLim){
-            int alpha = Constants.lowestEval +1;
-            int beta = Constants.highestEval -1;
-            int score = Constants.lowestEval +1;
+        while(!exitSearch){
+            int alpha = Constants.lowestEval;
+            int beta = Constants.highestEval;
+            int score = Constants.lowestEval;
 
             Move currentBestMove = null;
 
             for(Move move : moves){
                 if(!board.tryMakeMove(move)) continue;
-                int curScore = -alphaBeta(board, -beta, -alpha, 1, depth);
+                int curScore = -alphaBeta(board, -beta, -alpha, 0, depth);
                 board.unmakeMove();
 
                 if(exitSearch) break;
@@ -83,13 +79,11 @@ public class ChessAiOld {
             depth++;
         }
 
-        System.out.print("Node count: ");
-        System.out.println(nodeCount);
+        System.out.println(depth);
 
         return bestMove;
     }
 
-    //TODO: Check extensions
     public int alphaBeta(Board board, int alpha, int beta, int ply, int depth){ 
         exitSearch = isTimeToExit(nodeCount);
         if(exitSearch) return 0;
@@ -103,7 +97,6 @@ public class ChessAiOld {
         Move bestTTMove = null;
         if(entry != null) bestTTMove = entry.bestMove;
         if(entry != null && entry.depth >= depth){
-            ttHits++;
             int score = entry.score;
             if(score == -Constants.checkmateScore){
                 score += ply;
@@ -267,12 +260,12 @@ public class ChessAiOld {
         long bPawns = board.getPieceType(PieceType.BPAWN);
         long bKing = board.getPieceType(PieceType.BKING);
 
-        wPoints += Helpers.passedPawnsBonus(wPawns, bPawns, true, 1);
+        wPoints += Helpers.passedPawnsBonus(wPawns, bPawns, true, endGameRatio);
         wPoints -= Helpers.stackedpawnsPenalty(wPawns);
         double wShieldNOpenFileMod = (1-endGameRatio)*(Helpers.pawnShieldBonus(wKing, wPawns, true) - Helpers.openFilePenalty(wKing, wPawns));
         wPoints += wShieldNOpenFileMod;
 
-        bPoints += Helpers.passedPawnsBonus(bPawns, wPawns, false, 1);
+        bPoints += Helpers.passedPawnsBonus(bPawns, wPawns, false, endGameRatio);
         bPoints -= Helpers.stackedpawnsPenalty(bPawns);
         double bShieldNOpenFileMod = (1-endGameRatio)*(Helpers.pawnShieldBonus(bKing, bPawns, false) - Helpers.openFilePenalty(bKing, bPawns));
         bPoints += bShieldNOpenFileMod;
@@ -298,7 +291,6 @@ public class ChessAiOld {
         Move bestTTMove = null;
         if(entry != null) bestTTMove = entry.bestMove;
         if(entry != null){
-            ttHits++;
             int score = entry.score;
             if(score == -Constants.checkmateScore){
                 score += ply;
@@ -372,8 +364,6 @@ public class ChessAiOld {
     
     public Move getBestMoveDepth(Board board, int depth){
         this.nodeCount = 0;
-        this.ttHits = 0;
-        this.ttLookups = 0;
         this.foundFallbackMove = false; //Make search not depend on time
 
         //this.transPosTable.clear();

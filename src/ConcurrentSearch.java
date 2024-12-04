@@ -11,7 +11,7 @@ public class ConcurrentSearch implements Callable<Integer>{
 
     private final static int nullMoveReduction = 2; //2 or 3
 
-    private final int maxDepth;
+    private int maxDepth;
 
     private final static int maxPly = 20;
     private final AtomicReferenceArray<Move> killerMoves; //Store killer moves, modify ordering to place killers adter captures(modify moveValue).
@@ -26,6 +26,13 @@ public class ConcurrentSearch implements Callable<Integer>{
         this.orgBoard = board;
         this.maxDepth = depth;
         this.exitSearch = false;
+    }
+
+    public void setDepth(int newDepth){
+        this.maxDepth = newDepth;
+    }
+    public void setFoundFallbackMove(boolean fbm){
+        this.foundFallbackMove = fbm;
     }
 
     public int alphaBeta(Board board, int alpha, int beta, int ply, int depth){ 
@@ -93,7 +100,7 @@ public class ConcurrentSearch implements Callable<Integer>{
         int bestScore = Constants.lowestEval;
         Move bestMove = null;
 
-        if(isInCheck && depth <= 2) depth++; //Check extensions
+        if(isInCheck && depth <= 1) depth++; //Check extensions
  
         for(Move move : moves){
             if(!board.tryMakeMove(move)) continue;

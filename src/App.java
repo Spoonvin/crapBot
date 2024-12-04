@@ -53,7 +53,7 @@ public class App {
         while (true) {
             while (true) {
                 if (b.getIsWhiteToPlay() == oldBotWhite) {
-                    Move move = cBot.getBestMove(b, 1000);
+                    Move move = botOld.getBestMove(b, 1000);
                     if (move == null) {
                         if (b.isCheckForColor(oldBotWhite)) {
                             System.out.println("New bot wins!");
