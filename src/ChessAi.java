@@ -19,7 +19,7 @@ public class ChessAi {
     private final int nullMoveReduction = 2; //2 or 3
 
     private final int maxPly = 20;
-    private final Move[] killerMoves = new Move[maxPly]; //Store killer moves, modify ordering to place killers adter captures(modify moveValue).
+    private final Move[] killerMoves = new Move[maxPly+1]; //Store killer moves, modify ordering to place killers adter captures(modify moveValue).
 
     public ChessAi() throws Exception{
         Path relativePath = Paths.get("resources", "Book.txt");
@@ -70,6 +70,7 @@ public class ChessAi {
                 }
             }
             foundFallbackMove = true;
+            exitSearch = isTimeToExit(nodeCount);
             if(exitSearch){
                 break;
             }
@@ -151,7 +152,7 @@ public class ChessAi {
         int bestScore = Constants.lowestEval;
         Move bestMove = null;
 
-        if(isInCheck && depth <= 2) depth++; //Check extensions
+        if(isInCheck && depth <= 1) depth++; //Check extensions
  
         for(Move move : moves){
             if(!board.tryMakeMove(move)) continue;

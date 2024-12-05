@@ -19,7 +19,7 @@ public class ChessAiOld {
     private final int nullMoveReduction = 2; //2 or 3
 
     private final int maxPly = 20;
-    private final Move[] killerMoves = new Move[maxPly]; //Store killer moves, modify ordering to place killers adter captures(modify moveValue).
+    private final Move[] killerMoves = new Move[maxPly+1]; //Store killer moves, modify ordering to place killers adter captures(modify moveValue).
 
     public ChessAiOld() throws Exception{
         Path relativePath = Paths.get("resources", "Book.txt");
@@ -70,6 +70,7 @@ public class ChessAiOld {
                 }
             }
             foundFallbackMove = true;
+            exitSearch = isTimeToExit(nodeCount);
             if(exitSearch){
                 break;
             }
